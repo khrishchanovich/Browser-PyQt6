@@ -1,9 +1,5 @@
+https://yandex.ru,
+https://dzen.ru/?yredirect=true,https://dzen.ru/?yredirect=true
+https://www.google.com,Дзен
 https://www.google.com/,https://www.google.com
-https://www.google.com/search?q=df,Google
-https://www.google.com/,
-https://www.google.com/,www.google.com
-https://www.google.com/search?q=любовь,Google
-https://www.google.com/search?q= netswap,любовь - Поиск в Google
-https://netswap.io/,https://netswap.io
-https://netswap.io/#/,Netswap
-https://netswap.io/#/home,Netswap
+https://doodles.google/,https://doodles.google

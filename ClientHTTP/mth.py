@@ -3,6 +3,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtWebEngineWidgets import *
 
+
 class SimpleBrowser(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -54,6 +55,10 @@ class SimpleBrowser(QMainWindow):
         history_btn.triggered.connect(self.show_history)
         self.nav_bar.addAction(history_btn)
 
+        download_btn = QAction("Загрузка", self)
+        download_btn.triggered.connect(self.show_download_dialog)
+        self.nav_bar.addAction(download_btn)
+
         self.url_bar = QLineEdit()
         self.url_bar.returnPressed.connect(self.navigate_to_url)
         self.nav_bar.addWidget(self.url_bar)
@@ -63,6 +68,10 @@ class SimpleBrowser(QMainWindow):
         self.search_engines.activated.connect(self.navigate_home)
         self.nav_bar.addWidget(self.search_engines)
 
+        self.browser_download_manager = self.current_browser().page().profile().downloadRequested.connect(
+            self.download_requested)
+
+        self.downloading = False
 
         self.history = []
         self.load_history()
@@ -72,6 +81,58 @@ class SimpleBrowser(QMainWindow):
 
         self.load_search_engine()
         self.navigate_home()
+
+    def download_requested(self, download: QWebEngineDownloadItem):
+        if self.downloading:
+            QMessageBox.warning(self, "Предупреждение", "Загрузка уже идет")
+            return
+
+        self.downloading = True
+
+        file_info = download.path()
+        file_name = QFileInfo(file_info).fileName()
+        file_path, _ = QFileDialog.getSaveFileName(self, "Сохранить файл", QDir.homePath() + "/" + file_name)
+
+        if file_path:
+            download.setPath(file_path)
+            download.accept()
+
+            self.download_dialog = QDialog(self)
+            self.download_dialog.setWindowTitle("Загрузки")
+            layout = QVBoxLayout()
+
+            # Создаем прогресс бар
+            self.progress_bar = QProgressBar()
+            self.progress_bar.setRange(0, 100)
+            layout.addWidget(self.progress_bar)
+
+            cancel_btn = QPushButton("Отменить загрузку")
+            cancel_btn.clicked.connect(lambda: self.cancel_download(download))
+            layout.addWidget(cancel_btn)
+
+            self.download_dialog.show()
+
+            self.download_dialog.setLayout(layout)
+
+            download.downloadProgress.connect(
+                lambda bytes_received, bytes_total: self.update_download_progress(bytes_received, bytes_total))
+
+    def update_download_progress(self, bytes_received, bytes_total):
+        progress = int((bytes_received / bytes_total) * 100)
+        self.progress_bar.setValue(progress)
+        if progress >= 100:
+            self.downloading = False
+            self.download_dialog.close()
+
+    def cancel_download(self, download: QWebEngineDownloadItem = None):
+        if download:
+            download.cancel()
+        self.downloading = False
+        self.download_dialog.close()
+
+    def show_download_dialog(self):
+        self.download_dialog.show()
+
 
     def add_to_bookmarks(self):
         current_url = self.current_browser().url().toString()
@@ -86,22 +147,26 @@ class SimpleBrowser(QMainWindow):
         bookmarks_dialog.setWindowTitle("Закладки")
         layout = QVBoxLayout()
 
-        bookmarks_list = QListWidget()
+        self.bookmarks_list = QListWidget()
         for bookmark in self.bookmarks:
-            bookmarks_list.addItem(f"{bookmark[0]} - {bookmark[1]}")
-        layout.addWidget(bookmarks_list)
+            self.bookmarks_list.addItem(f"{bookmark[0]} - {bookmark[1]}")
+        layout.addWidget(self.bookmarks_list)
 
         delete_btn = QPushButton("Удалить закладку")
-        delete_btn.clicked.connect(lambda: self.delete_bookmark(bookmarks_list.currentRow()))
+        delete_btn.clicked.connect(lambda: self.delete_bookmark(self.bookmarks_list.currentRow()))
         layout.addWidget(delete_btn)
 
         bookmarks_dialog.setLayout(layout)
         bookmarks_dialog.exec_()
 
     def delete_bookmark(self, index):
-        if index >= 0:
+        if index >= 0 and index < len(self.bookmarks):
             del self.bookmarks[index]
             self.save_bookmarks()
+            # Update the bookmarks list in the dialog
+            self.bookmarks_list.clear()
+            for bookmark in self.bookmarks:
+                self.bookmarks_list.addItem(f"{bookmark[0]} - {bookmark[1]}")
 
     def load_bookmarks(self):
         try:
@@ -199,48 +264,36 @@ class SimpleBrowser(QMainWindow):
             self.tabs.removeTab(current_index)
 
     def show_history(self):
-        self.history_list = QListWidget()
-
-        self.history_list.itemClicked.connect(self.item_selected)
-        self.history_list.itemDoubleClicked.connect(self.item_double_clicked)
-
         history_dialog = QDialog(self)
-        history_dialog.setWindowTitle("История посещений")
-        history_layout = QVBoxLayout()
+        history_dialog.setWindowTitle("История")
+        layout = QVBoxLayout()
 
-        self.history_list.clear()
-        for url, title in self.history:
-            self.history_list.addItem(f"{title} - {url}")
-        history_layout.addWidget(self.history_list)
+        self.history_list = QListWidget()
+        for item in self.history:
+            self.history_list.addItem(f"{item[0]} - {item[1]}")
+        layout.addWidget(self.history_list)
+
+        delete_btn = QPushButton("Удалить элемент из истории")
+        delete_btn.clicked.connect(lambda: self.delete_selected_item(self.history_list.currentRow()))
+        layout.addWidget(delete_btn)
 
         clear_btn = QPushButton("Очистить историю")
         clear_btn.clicked.connect(self.clear_history)
-        history_layout.addWidget(clear_btn)
+        layout.addWidget(clear_btn)
 
-        self.delete_btn = QPushButton("Удалить")
-        self.delete_btn.clicked.connect(self.delete_selected_item)
-        history_layout.addWidget(self.delete_btn)
-
-        history_dialog.setLayout(history_layout)
-
-        self.history_list.itemClicked.disconnect(self.item_selected)
-        self.history_list.itemDoubleClicked.disconnect(self.item_double_clicked)
-
-        self.history_list.itemClicked.connect(self.item_selected)
-        self.history_list.itemDoubleClicked.connect(self.item_double_clicked)
-
+        history_dialog.setLayout(layout)
         history_dialog.exec_()
 
     def item_selected(self, item):
         self.selected_item = item.text()
 
-    def delete_selected_item(self):
-        if hasattr(self, 'selected_item'):
-            self.history.remove(self.selected_item)
+    def delete_selected_item(self, index):
+        if index >= 0 and index < len(self.history):
+            del self.history[index]
             self.save_history()
             self.history_list.clear()
-            for url in self.history:
-                self.history_list.addItem(url)
+            for item in self.history:
+                self.history_list.addItem(f"{item[0]} - {item[1]}")
 
     def item_double_clicked(self, item):
         if hasattr(self, 'selected_item'):
