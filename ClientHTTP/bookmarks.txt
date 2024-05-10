@@ -1,1 +1,2 @@
-sd,https://www.google.com/,Google
+перейти на страницу,https://www.google.com/search?sca_esv=c039891655a7704c&sca_upv=1&q=Vatertag&oi=ddle&ct=308473645&hl=de&si=ACC90nyvvWro6QmnyY1IfSdgk5wwjB1r8BGd_IWRjXqmKPQqm1PyEgLXL60sN9ok_2tcGgs6Z7oCCXXARwnrFgqS5NBhUHvpykYnChrUqc0jFOq07Xu9Rvhb0OdqpeRXUkBevfLA9CdPc4JTr1htQU7OQgg7QpXngA%3D%3D&sa=X&ved=0ahUKEwja3PGMmYCGAxUD_7sIHS13D6gQPQgE&biw=794&bih=543&dpr=1.25,Vatertag - Google Suche
+любовь,https://www.google.com/search?q=любовь,любовь - ѕошук Google
