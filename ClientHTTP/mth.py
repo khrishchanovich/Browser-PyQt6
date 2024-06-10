@@ -144,6 +144,10 @@ class SimpleBrowser(QMainWindow):
         self.load_search_engine()
         self.navigate_home()
 
+    def update_url_bar_from_tab(self):
+        current_browser = self.current_browser()
+        if current_browser:
+            self.url_bar.setText(current_browser.url().toString())
 
     def download_requested(self, request: QWebEngineDownloadRequest):
         if self.downloading:
@@ -232,7 +236,7 @@ class SimpleBrowser(QMainWindow):
         browser = QWebEngineView()
 
         file_path, _ = QFileDialog.getOpenFileName(self, "Открыть HTML-файл", "", "HTML Files (*.html *.htm)")
-        print("File Path:", file_path)  # Add this line to check the file path
+        print("File Path:", file_path)
         if file_path:
             browser.setUrl(QUrl.fromLocalFile(file_path))
             self.url_bar.setText('file:///' + file_path)
@@ -281,7 +285,6 @@ class SimpleBrowser(QMainWindow):
         if index >= 0 and index < len(self.bookmarks):
             del self.bookmarks[index]
             self.save_bookmarks()
-            # Update the bookmarks list in the dialog
             self.bookmarks_list.clear()
             for bookmark in self.bookmarks:
                 self.bookmarks_list.addItem(f"{bookmark[0]} - {bookmark[1]}")
@@ -322,6 +325,7 @@ class SimpleBrowser(QMainWindow):
         self.forward_btn.clicked.connect(self.navigate_forward)
         self.reload_btn.clicked.connect(browser.reload)
         self.home_btn.clicked.connect(self.navigate_home)
+        self.tabs.currentChanged.connect(self.update_url_bar_from_tab)
 
     def navigate_back(self):
         current_browser = self.current_browser()
@@ -368,20 +372,25 @@ class SimpleBrowser(QMainWindow):
         return self.tabs.currentWidget()
 
     def navigate_home(self):
-        # Проверяем, есть ли вкладки в браузере
-        if self.tabs.count() > 0:
-            # Получаем текущий объект QWebEngineView
-            browser = self.current_browser()
-            # Устанавливаем URL домашней страницы
-            browser.setUrl(QUrl("http://www.google.com"))  # Или другой URL вашей домашней страницы
-            # Обновляем адресную строку и заголовок вкладки
-            self.url_bar.setText(browser.url().toString())
-            self.update_tab_title(browser.page().title())
-            # Сохраняем историю
-            self.save_history()
-        else:
-            # Если вкладок нет, просто добавляем новую вкладку с домашним URL
-            self.add_new_tab()
+        browser = self.current_browser()
+        # text = self.url_bar.text()
+        # if 'http' in text or 'https' in text:
+        #     url = QUrl(text)
+        # else:
+        #     url = QUrl("https://www.google.com/search?q=" + text)
+        url = QUrl("https://www.google.com/")
+        browser.setUrl(url)
+
+        # browser.urlChanged.connect(lambda q, browser=browser: self.update_url_bar(browser, q))
+        # browser.titleChanged.connect(self.update_tab_title)
+        #
+        # self.tabs.addTab(browser, "Новая вкладка")
+        # self.tabs.setCurrentWidget(browser)
+
+        self.update_url_bar(browser, url)
+        self.update_tab_title(browser.page().title())
+
+        self.save_history()
 
     def navigate_to_url(self):
         # browser = QWebEngineView()
